@@ -1,5 +1,11 @@
-
 from tqdm import tqdm
+import torch
+
+train_losses = []
+test_losses = []
+train_acc = []
+test_acc = []
+test_incorrect_pred = {'images': [], 'ground_truths': [], 'predicted_vals': []}
 
 def GetCorrectPredCount(pPrediction, pLabels):
   return pPrediction.argmax(dim=1).eq(pLabels).sum().item()
