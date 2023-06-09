@@ -65,3 +65,7 @@ Estimated Total Size (MB): 2.93
     - `train` : Function to perform the training
     - `test` : Function to do testing of the model
     - `plot` : Function to plot the accuracy and loss for training and test
+
+### S6
+
+ `This folder contains script to achieve 99.41% accuracy with approx 16K parameters in 20 epochs on MNIST dataset`
