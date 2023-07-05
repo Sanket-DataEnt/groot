@@ -66,4 +66,4 @@ class Net(nn.Module):
     x = self.pool(x)
     x = x.view(-1, 512)
     x = self.fc(x)
-    return x
+    return F.softmax(x, dim=-1)
