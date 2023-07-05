@@ -14,7 +14,7 @@ def test(net, device, testloader):
            total += target.size(0)
            correct += (predicted == target).sum().item()
           
-        print('Accuracy of the network on the 10000 test images: %d %%' % (100 * correct / total))
+        print('Accuracy of the network on the 10000 test images: %0.2f %%' % (100 * correct / total))
     test_acc = (100 * correct / total)  
 
     return test_acc
