@@ -132,3 +132,17 @@ def test_categorywise(net, device, testloader, classes):
 
    for i in range(10):
       print('Accuracy of %5s : %2d %%' % (classes[i], 100 * class_correct[i] / class_total[i]))
+
+def plots(train_acc):
+  fig, axs = plt.subplots(3)
+  axs[0].plot(train_acc)
+  axs[0].set_title("Training Accuracy")
+  axs[0].set_xlabel("Batch")
+  axs[0].set_ylabel("Accuracy")
+  axs[1].plot(test_acc)
+  axs[1].set_title("Test Accuracy")
+  axs[1].set_xlabel("Batch")
+  axs[2].plot(learning_rate)
+  axs[2].set_title("Learning rate")
+  axs[2].set_xlabel("epoch")
+  axs[2].set_ylabel("lr")
