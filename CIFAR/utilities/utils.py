@@ -170,12 +170,12 @@ def missclassified_images(model, testloader, device, classes):
                       wspace=0.4,
                       hspace=0.4)
   for i in range(0,10):
-  plt.subplot(5, 2, i+1)
-  frame1 = plt.gca()
-  frame1.axes.xaxis.set_ticklabels([])
-  frame1.axes.yaxis.set_ticklabels([])
-  plt.imshow(np.transpose(((data[missed[i]].cpu()/2)+0.5).numpy(),(1,2,0)))
-  plt.ylabel("GT:"+str(classes[target1[missed[i]]])+'\nPred:'+str(classes[predicted1[missed[i]]]))
+    plt.subplot(5, 2, i+1)
+    frame1 = plt.gca()
+    frame1.axes.xaxis.set_ticklabels([])
+    frame1.axes.yaxis.set_ticklabels([])
+    plt.imshow(np.transpose(((data[missed[i]].cpu()/2)+0.5).numpy(),(1,2,0)))
+    plt.ylabel("GT:"+str(classes[target1[missed[i]]])+'\nPred:'+str(classes[predicted1[missed[i]]]))
 
 
 def correct_classified_images(model, testloader, device, classes):
@@ -201,9 +201,9 @@ def correct_classified_images(model, testloader, device, classes):
                       wspace=0.4,
                       hspace=0.4)
   for i in range(0,10):
-  plt.subplot(5, 2, i+1)
-  frame1 = plt.gca()
-  frame1.axes.xaxis.set_ticklabels([])
-  frame1.axes.yaxis.set_ticklabels([])
-  plt.imshow(np.transpose(((data[missed[i]].cpu()/2)+0.5).numpy(),(1,2,0)))
-  plt.ylabel("GT:"+str(classes[target1[missed[i]]])+'\nPred:'+str(classes[predicted1[missed[i]]]))
+    plt.subplot(5, 2, i+1)
+    frame1 = plt.gca()
+    frame1.axes.xaxis.set_ticklabels([])
+    frame1.axes.yaxis.set_ticklabels([])
+    plt.imshow(np.transpose(((data[missed[i]].cpu()/2)+0.5).numpy(),(1,2,0)))
+    plt.ylabel("GT:"+str(classes[target1[missed[i]]])+'\nPred:'+str(classes[predicted1[missed[i]]]))
