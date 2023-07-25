@@ -133,7 +133,7 @@ def test_categorywise(net, device, testloader, classes):
    for i in range(10):
       print('Accuracy of %5s : %2d %%' % (classes[i], 100 * class_correct[i] / class_total[i]))
 
-def plots(train_acc):
+def plots(train_acc, test_acc, learning_rate):
   fig, axs = plt.subplots(3)
   axs[0].plot(train_acc)
   axs[0].set_title("Training Accuracy")
