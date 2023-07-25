@@ -51,7 +51,7 @@ class TestAlbumentation():
     return img
 
 # To Visualize Images, n = number of images
-def visualize_images(n, images, labels):
+def visualize_images(n, images, labels, classes):
   for i in range(0,n):
     plt.subplot(3, 3, i+1)
     frame1 = plt.gca()
