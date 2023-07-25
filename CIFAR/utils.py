@@ -5,6 +5,7 @@ from albumentations.augmentations.dropout.coarse_dropout import CoarseDropout
 from albumentations.augmentations.geometric.transforms import PadIfNeeded 
 from albumentations.augmentations.crops.transforms import CenterCrop
 from albumentations.augmentations.dropout.cutout import Cutout
+import matplotlib.pyplot as plt
 
 def get_lr(optimizer):
   for param_group in optimizer.param_groups:
