@@ -9,7 +9,8 @@ from albumentations.augmentations.dropout.cutout import Cutout
 def get_lr(optimizer):
   for param_group in optimizer.param_groups:
     return param_group['lr']
-
+    
+# Train Transformation
 class TrainAlbumentation():
   def __init__(self):
     self.train_transform = Compose([
@@ -31,7 +32,8 @@ class TrainAlbumentation():
     img = np.array(img)
     img = self.train_transform(image = img)['image']
     return img
-
+    
+# Test Transformation
 class TestAlbumentation():
   def __init__(self):
     self.test_transform = Compose([
@@ -46,3 +48,13 @@ class TestAlbumentation():
     img = np.array(img)
     img = self.test_transform(image = img)['image']
     return img
+
+# To Visualize Images, n = number of images
+def visualize_images(n):
+  for i in range(0,n):
+    plt.subplot(3, 3, i+1)
+    frame1 = plt.gca()
+    frame1.axes.xaxis.set_ticklabels([])
+    frame1.axes.yaxis.set_ticklabels([])
+    plt.imshow(np.transpose(((images[i]/2)+0.5).numpy(),(1,2,0)))
+    plt.title(classes[labels[i]])
