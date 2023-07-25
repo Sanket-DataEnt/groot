@@ -146,3 +146,64 @@ def plots(train_acc, test_acc, learning_rate):
   axs[2].set_title("Learning rate")
   axs[2].set_xlabel("epoch")
   axs[2].set_ylabel("lr")
+
+def missclassified_images(model, testloader, device, classes):
+  model.eval()
+  missed = []
+  with torch.no_grad():
+        pbar1 = tqdm(testloader)
+        for i, (data, target) in enumerate(pbar1):
+            data, target = data.to(device), target.to(device)
+            outputs = model(data)
+            _, predicted = torch.max(outputs.data, 1)
+            target1 = target.cpu().numpy()
+            predicted1 = predicted.cpu().numpy()
+            for i in range(128):
+                if target1[i]!=predicted1[i]:
+                  missed.append(i)
+            break
+
+  plt.subplots_adjust(left=0.1,
+                      bottom=0.1,
+                      right=0.9,
+                      top=0.9,
+                      wspace=0.4,
+                      hspace=0.4)
+  for i in range(0,10):
+  plt.subplot(5, 2, i+1)
+  frame1 = plt.gca()
+  frame1.axes.xaxis.set_ticklabels([])
+  frame1.axes.yaxis.set_ticklabels([])
+  plt.imshow(np.transpose(((data[missed[i]].cpu()/2)+0.5).numpy(),(1,2,0)))
+  plt.ylabel("GT:"+str(classes[target1[missed[i]]])+'\nPred:'+str(classes[predicted1[missed[i]]]))
+
+
+def correct_classified_images(model, testloader, device, classes):
+  model.eval()
+  missed = []
+  with torch.no_grad():
+        pbar1 = tqdm(testloader)
+        for i, (data, target) in enumerate(pbar1):
+            data, target = data.to(device), target.to(device)
+            outputs = model(data)
+            _, predicted = torch.max(outputs.data, 1)
+            target1 = target.cpu().numpy()
+            predicted1 = predicted.cpu().numpy()
+            for i in range(128):
+                if target1[i]==predicted1[i]:
+                  missed.append(i)
+            break
+
+  plt.subplots_adjust(left=0.1,
+                      bottom=0.1,
+                      right=0.9,
+                      top=0.9,
+                      wspace=0.4,
+                      hspace=0.4)
+  for i in range(0,10):
+  plt.subplot(5, 2, i+1)
+  frame1 = plt.gca()
+  frame1.axes.xaxis.set_ticklabels([])
+  frame1.axes.yaxis.set_ticklabels([])
+  plt.imshow(np.transpose(((data[missed[i]].cpu()/2)+0.5).numpy(),(1,2,0)))
+  plt.ylabel("GT:"+str(classes[target1[missed[i]]])+'\nPred:'+str(classes[predicted1[missed[i]]]))
