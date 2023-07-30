@@ -1,4 +1,4 @@
-### This folder contains strategy to quickly train CIFAR dataset
+## S10 : Strategy to quickly train CIFAR dataset
 
 **Goal : To achieve atleast 90% accuracy in 24 epochs**
 
@@ -25,3 +25,8 @@
 - **Correctly Classified Images :**
 
 <img width="420" alt="Screenshot 2023-07-07 at 1 13 28 AM" src="https://github.com/Sanket-DataEnt/groot/assets/25937235/13df1ed9-c1be-4073-802b-5aa0bb384d69">
+
+
+## S11 : To apply Grad Cam on the model output. Grad Cam/ Explainable AI helps in understanding what model is looking in the image to do the inference
+
+
