@@ -250,3 +250,33 @@ def visualize_gradcam(net, image_tensor, targ, pred, classes):
     frame1.axes.xaxis.set_ticklabels([])
     frame1.axes.yaxis.set_ticklabels([])
     plt.imshow(visualization)
+    
+def get_misclassified_data(model, device, test_loader):
+    """
+    Function to run the model on test set and return misclassified images
+    :param model: Network Architecture
+    :param device: CPU/GPU
+    :param test_loader: DataLoader for test set
+    """
+    # Prepare the model for evaluation i.e. drop the dropout layer
+    model.eval()
+    # List to store misclassified Images
+    misclassified_data = []
+    # Reset the gradients
+    with torch.no_grad():
+        # Extract images, labels in a batch
+        for data, target in test_loader:
+            # Migrate the data to the device
+            data, target = data.to(device), target.to(device)
+            # Extract single image, label from the batch
+            for image, label in zip(data, target):
+                # Add batch dimension to the image
+                image = image.unsqueeze(0)
+                # Get the model prediction on the image
+                output = model(image)
+                # Convert the output from one-hot encoding to a value
+                pred = output.argmax(dim=1, keepdim=True)
+                # If prediction is incorrect, append the data
+                if pred != label:
+                    misclassified_data.append((image, label, pred))
+    return misclassified_data
