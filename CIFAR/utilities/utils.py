@@ -202,8 +202,8 @@ def show_images(net, testloader, device, classes, flag):
    plt.ylabel("GT:"+str(classes[target1[missed[i]]])+'\nPred:'+str(classes[predicted1[missed[i]]]))
   return empty_tensor, pred, targ
 
-def grad_cam(net, img, targ, image_tensor):
-  target_layers = [net.layer4[-1]]
+def grad_cam(net, img, targ, image_tensor, target_layers):
+  # target_layers = [net.layer4[-1]]
   # Construct the CAM object once, and then re-use it on many images:
   cam = GradCAM(model=net, target_layers=target_layers, use_cuda=True)
   # We have to specify the target we want to generate
@@ -229,7 +229,7 @@ def grad_cam(net, img, targ, image_tensor):
   visualization = show_cam_on_image(input_image_np, grayscale_cam, use_rgb=True)
   return input_image_np, visualization
 
-def visualize_gradcam(net, image_tensor, targ, pred, classes):
+def visualize_gradcam(net, image_tensor, targ, pred, classes, target_layers):
   plt.subplots_adjust(left=0.1,
                     bottom=0.1,
                     right=0.9,
@@ -240,7 +240,7 @@ def visualize_gradcam(net, image_tensor, targ, pred, classes):
   # Set the figure size to adjust the size of the displayed images
   plt.figure(figsize=(10, 2 * maxi))  # Adjust the width and height as needed
   for img in range(maxi):
-    input_image_np,visualization=grad_cam(net, img, targ, image_tensor)
+    input_image_np,visualization=grad_cam(net, img, targ, image_tensor, target_layers)
     plt.subplot(maxi,2,2*img+1)
     frame1 = plt.gca()
     frame1.axes.xaxis.set_ticklabels([])
