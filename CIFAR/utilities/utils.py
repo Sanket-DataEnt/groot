@@ -13,11 +13,18 @@ import matplotlib.pyplot as plt
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 from pytorch_grad_cam.utils.image import show_cam_on_image
+from torch_lr_finder import LRFinder
+
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib.image")
 
-
+def find_lr(model, data_loader, optimizer, criterion):
+    lr_finder = LRFinder(model, optimizer, criterion)
+    lr_finder.range_test(data_loader, end_lr=0.1, num_iter=100, step_mode='exp')
+    _, best_lr = lr_finder.plot()
+    lr_finder.reset()
+    return best_lr
 def get_lr(optimizer):
   for param_group in optimizer.param_groups:
     return param_group['lr']
@@ -333,3 +340,79 @@ def display_gradcam_output(data: list,
         plt.title(r"Correct: " + classes[data[i][1].item()] + '\n' + 'Output: ' + classes[data[i][2].item()])
         plt.xticks([])
         plt.yticks([])
+
+def get_misclassified_data_lightning(model, test_loader):
+    """
+    Function to run the model on test set and return misclassified images
+    :param model: Network Architecture
+    :param device: CPU/GPU
+    :param test_loader: DataLoader for test set
+    """
+    # Prepare the model for evaluation i.e. drop the dropout layer
+    model.eval()
+    # List to store misclassified Images
+    misclassified_data = []
+    # Reset the gradients
+    with torch.no_grad():
+        # Extract images, labels in a batch
+        for data, target in test_loader:
+            # Migrate the data to the device
+            # data, target = data.to(device), target.to(device)
+            # Extract single image, label from the batch
+            for image, label in zip(data, target):
+                # Add batch dimension to the image
+                image = image.unsqueeze(0)
+                # Get the model prediction on the image
+                output = model(image)
+                # Convert the output from one-hot encoding to a value
+                pred = output.argmax(dim=1, keepdim=True)
+                # If prediction is incorrect, append the data
+                if pred != label:
+                    misclassified_data.append((image, label, pred))
+    return misclassified_data
+
+def show_images_lightning(net, testloader, classes, flag):
+  net.eval()
+  missed = []
+  pred = []
+  targ = []
+  empty_tensor = torch.tensor([])#.to(device)
+  with torch.no_grad():
+      pbar1 = tqdm(testloader)
+      for i, (data, target) in enumerate(pbar1):
+          #  data, target = data.to(device), target.to(device)
+           outputs = net(data)
+           _, predicted = torch.max(outputs.data, 1)
+           target1 = target.cpu().numpy()
+           predicted1 = predicted.cpu().numpy()
+           for i in range(64):
+             if flag==1:
+              if target1[i]==predicted1[i]:
+                 missed.append(i)
+                 new_tensor = data[i].unsqueeze(0)
+                 empty_tensor = torch.cat((empty_tensor, new_tensor), dim=0)
+                 pred.append(predicted1[i])
+                 targ.append(target1[i])
+             else:
+              if target1[i]!=predicted1[i]:
+                 missed.append(i)
+                 new_tensor = data[i].unsqueeze(0)
+                 empty_tensor = torch.cat((empty_tensor, new_tensor), dim=0)
+                 pred.append(predicted1[i])
+                 targ.append(target1[i])
+           break
+
+  plt.subplots_adjust(left=0.1,
+                    bottom=0.1,
+                    right=0.9,
+                    top=0.9,
+                    wspace=0.4,
+                    hspace=0.4)
+  for i in range(0,10):
+   plt.subplot(5, 2, i+1)
+   frame1 = plt.gca()
+   frame1.axes.xaxis.set_ticklabels([])
+   frame1.axes.yaxis.set_ticklabels([])
+   plt.imshow(np.transpose(((data[missed[i]].cpu()/2)+0.5).numpy(),(1,2,0)))
+   plt.ylabel("GT:"+str(classes[target1[missed[i]]])+'\nPred:'+str(classes[predicted1[missed[i]]]))
+  return empty_tensor, pred, targ
