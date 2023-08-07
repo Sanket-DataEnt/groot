@@ -1,6 +1,8 @@
 import numpy as np
 import torch
+import math
 from tqdm import tqdm
+from torchvision import transforms
 from albumentations import *
 from albumentations.pytorch import ToTensorV2
 from albumentations.augmentations.dropout.coarse_dropout import CoarseDropout 
@@ -200,8 +202,8 @@ def show_images(net, testloader, device, classes, flag):
    plt.ylabel("GT:"+str(classes[target1[missed[i]]])+'\nPred:'+str(classes[predicted1[missed[i]]]))
   return empty_tensor, pred, targ
 
-def grad_cam(net, img, targ, image_tensor):
-  target_layers = [net.layer4[-1]]
+def grad_cam(net, img, targ, image_tensor, target_layers):
+  # target_layers = [net.layer4[-1]]
   # Construct the CAM object once, and then re-use it on many images:
   cam = GradCAM(model=net, target_layers=target_layers, use_cuda=True)
   # We have to specify the target we want to generate
@@ -227,7 +229,7 @@ def grad_cam(net, img, targ, image_tensor):
   visualization = show_cam_on_image(input_image_np, grayscale_cam, use_rgb=True)
   return input_image_np, visualization
 
-def visualize_gradcam(net, image_tensor, targ, pred, classes):
+def visualize_gradcam(net, image_tensor, targ, pred, classes, target_layers):
   plt.subplots_adjust(left=0.1,
                     bottom=0.1,
                     right=0.9,
@@ -238,7 +240,7 @@ def visualize_gradcam(net, image_tensor, targ, pred, classes):
   # Set the figure size to adjust the size of the displayed images
   plt.figure(figsize=(10, 2 * maxi))  # Adjust the width and height as needed
   for img in range(maxi):
-    input_image_np,visualization=grad_cam(net, img, targ, image_tensor)
+    input_image_np,visualization=grad_cam(net, img, targ, image_tensor, target_layers)
     plt.subplot(maxi,2,2*img+1)
     frame1 = plt.gca()
     frame1.axes.xaxis.set_ticklabels([])
@@ -250,3 +252,84 @@ def visualize_gradcam(net, image_tensor, targ, pred, classes):
     frame1.axes.xaxis.set_ticklabels([])
     frame1.axes.yaxis.set_ticklabels([])
     plt.imshow(visualization)
+    
+def get_misclassified_data(model, device, test_loader):
+    """
+    Function to run the model on test set and return misclassified images
+    :param model: Network Architecture
+    :param device: CPU/GPU
+    :param test_loader: DataLoader for test set
+    """
+    # Prepare the model for evaluation i.e. drop the dropout layer
+    model.eval()
+    # List to store misclassified Images
+    misclassified_data = []
+    # Reset the gradients
+    with torch.no_grad():
+        # Extract images, labels in a batch
+        for data, target in test_loader:
+            # Migrate the data to the device
+            data, target = data.to(device), target.to(device)
+            # Extract single image, label from the batch
+            for image, label in zip(data, target):
+                # Add batch dimension to the image
+                image = image.unsqueeze(0)
+                # Get the model prediction on the image
+                output = model(image)
+                # Convert the output from one-hot encoding to a value
+                pred = output.argmax(dim=1, keepdim=True)
+                # If prediction is incorrect, append the data
+                if pred != label:
+                    misclassified_data.append((image, label, pred))
+    return misclassified_data
+
+def display_gradcam_output(data: list,
+                           classes: list[str],
+                           inv_normalize: transforms.Normalize,
+                           model: 'DL Model',
+                           target_layers: list['model_layer'],
+                           targets=None,
+                           number_of_samples: int = 10,
+                           transparency: float = 0.60):
+    """
+    Function to visualize GradCam output on the data
+    :param data: List[Tuple(image, label)]
+    :param classes: Name of classes in the dataset
+    :param inv_normalize: Mean and Standard deviation values of the dataset
+    :param model: Model architecture
+    :param target_layers: Layers on which GradCam should be executed
+    :param targets: Classes to be focused on for GradCam
+    :param number_of_samples: Number of images to print
+    :param transparency: Weight of Normal image when mixed with activations
+    """
+    # Plot configuration
+    fig = plt.figure(figsize=(10, 10))
+    x_count = 5
+    y_count = 1 if number_of_samples <= 5 else math.floor(number_of_samples / x_count)
+
+    # Create an object for GradCam
+    cam = GradCAM(model=model, target_layers=target_layers, use_cuda=True)
+
+    # Iterate over number of specified images
+    for i in range(number_of_samples):
+        plt.subplot(y_count, x_count, i + 1)
+        input_tensor = data[i][0]
+
+        # Get the activations of the layer for the images
+        grayscale_cam = cam(input_tensor=input_tensor, targets=targets)
+        grayscale_cam = grayscale_cam[0, :]
+
+        # Get back the original image
+        img = input_tensor.squeeze(0).to('cpu')
+        img = inv_normalize(img)
+        rgb_img = np.transpose(img, (1, 2, 0))
+        rgb_img = rgb_img.numpy()
+
+        # Mix the activations on the original image
+        visualization = show_cam_on_image(rgb_img, grayscale_cam, use_rgb=True, image_weight=transparency)
+
+        # Display the images on the plot
+        plt.imshow(visualization)
+        plt.title(r"Correct: " + classes[data[i][1].item()] + '\n' + 'Output: ' + classes[data[i][2].item()])
+        plt.xticks([])
+        plt.yticks([])
