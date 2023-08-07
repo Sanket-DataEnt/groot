@@ -29,4 +29,6 @@
 
 ## S11 : To apply Grad Cam on the model output. Grad Cam/ Explainable AI helps in understanding what model is looking in the image to do the inference
 
+## S12 : To convert the code used in S10 to PyTorchLightning Module
+
 
