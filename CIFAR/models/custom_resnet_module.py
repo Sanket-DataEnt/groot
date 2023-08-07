@@ -7,6 +7,7 @@ from utilities.utils import TrainAlbumentation
 from utilities.utils import TestAlbumentation
 import torch.nn as nn
 import torch.nn.functional as F
+from utilities.utils import find_lr
 
 def normalization(norm_type, embedding):
   if norm_type=='batch':
