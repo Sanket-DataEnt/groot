@@ -8,7 +8,8 @@ import torch.nn.functional as F
 from yolov3 import YOLOv3
 import config
 from loss import YoloLoss
-from torch_lr_finder import LRFinder
+# from torch_lr_finder import LRFinder
+from dataset import YOLODataset
 
 def criterion(out, y):
     loss = (
@@ -18,12 +19,12 @@ def criterion(out, y):
             )
     return loss
 
-def find_lr(model, data_loader, optimizer, criterion):
-    lr_finder = LRFinder(model, optimizer, criterion)
-    lr_finder.range_test(data_loader, end_lr=0.1, num_iter=100, step_mode='exp')
-    _, best_lr = lr_finder.plot()
-    lr_finder.reset()
-    return best_lr
+# def find_lr(model, data_loader, optimizer, criterion):
+#     lr_finder = LRFinder(model, optimizer, criterion)
+#     lr_finder.range_test(data_loader, end_lr=0.1, num_iter=100, step_mode='exp')
+#     _, best_lr = lr_finder.plot()
+#     lr_finder.reset()
+#     return best_lr
 
 
 
@@ -92,18 +93,26 @@ class Model(LightningModule):
           }
       }
 
-  def prepare_data(self):
-      torchvision.datasets.CIFAR10(root='./data', train=True, download=True)
-      torchvision.datasets.CIFAR10(root='./data', train=False, download=True)
+#   def prepare_data(self):
+#       torchvision.datasets.CIFAR10(root='./data', train=True, download=True)
+#       torchvision.datasets.CIFAR10(root='./data', train=False, download=True)
 
-  def setup(self, stage=None):
-      if stage == 'fit' or stage is None:
-          self.cifar10_train = torchvision.datasets.CIFAR10(root='./data', train=True, transform=TrainAlbumentation())
-          self.cifar10_val = torchvision.datasets.CIFAR10(root='./data', train=False, transform=TestAlbumentation())
-      if stage == 'test' or stage is None:
-          self.cifar10_test = torchvision.datasets.CIFAR10(root='./data', train=False, transform=TestAlbumentation())
+#   def setup(self, stage=None):
+#       if stage == 'fit' or stage is None:
+#           self.cifar10_train = torchvision.datasets.CIFAR10(root='./data', train=True, transform=TrainAlbumentation())
+#           self.cifar10_val = torchvision.datasets.CIFAR10(root='./data', train=False, transform=TestAlbumentation())
+#       if stage == 'test' or stage is None:
+#           self.cifar10_test = torchvision.datasets.CIFAR10(root='./data', train=False, transform=TestAlbumentation())
 
   def train_dataloader(self):
+      train_dataset = YOLODataset(
+        config.DATASET + 'train.csv',
+        transform=config.train_transforms,
+        S=[config.IMAGE_SIZE // 32, config.IMAGE_SIZE // 16, config.IMAGE_SIZE // 8],
+        img_dir=config.IMG_DIR,
+        label_dir=config.LABEL_DIR,
+        anchors=config.ANCHORS,
+    )
       return torch.utils.data.DataLoader(self.cifar10_train, shuffle=True, **self.dataloader_args)
 
   def val_dataloader(self):
