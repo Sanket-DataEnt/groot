@@ -1,6 +1,7 @@
 import albumentations as A
 import cv2
 import torch
+import os
 
 from albumentations.pytorch import ToTensorV2
 from utils import seed_everything
@@ -8,14 +9,14 @@ from utils import seed_everything
 DATASET = 'PASCAL_VOC'
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # seed_everything()  # If you want deterministic behavior
-NUM_WORKERS = 0
-BATCH_SIZE = 32
+NUM_WORKERS = min(os.cpu_count(), 4)
+BATCH_SIZE = 8
 IMAGE_SIZE = 416
 NUM_CLASSES = 20
 LEARNING_RATE = 1e-5
 WEIGHT_DECAY = 1e-4
-NUM_EPOCHS = 100
-CONF_THRESHOLD = 0.05
+NUM_EPOCHS = 40
+CONF_THRESHOLD = 0.5
 MAP_IOU_THRESH = 0.5
 NMS_IOU_THRESH = 0.45
 S = [IMAGE_SIZE // 32, IMAGE_SIZE // 16, IMAGE_SIZE // 8]
@@ -32,11 +33,13 @@ ANCHORS = [
     [(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)],
 ]  # Note these have been rescaled to be between [0, 1]
 
-means = [0.485, 0.456, 0.406]
+mean = [0.485, 0.456, 0.406]
+std = [0.229, 0.224, 0.225]
 
 scale = 1.1
 train_transforms = A.Compose(
     [
+        A.Normalize(mean=mean, std=std),
         A.LongestMaxSize(max_size=int(IMAGE_SIZE * scale)),
         A.PadIfNeeded(
             min_height=int(IMAGE_SIZE * scale),
@@ -68,6 +71,7 @@ train_transforms = A.Compose(
 )
 test_transforms = A.Compose(
     [
+        A.Normalize(mean=mean, std=std),
         A.LongestMaxSize(max_size=IMAGE_SIZE),
         A.PadIfNeeded(
             min_height=IMAGE_SIZE, min_width=IMAGE_SIZE, border_mode=cv2.BORDER_CONSTANT
@@ -99,86 +103,4 @@ PASCAL_CLASSES = [
     "sofa",
     "train",
     "tvmonitor"
-]
-
-COCO_LABELS = ['person',
- 'bicycle',
- 'car',
- 'motorcycle',
- 'airplane',
- 'bus',
- 'train',
- 'truck',
- 'boat',
- 'traffic light',
- 'fire hydrant',
- 'stop sign',
- 'parking meter',
- 'bench',
- 'bird',
- 'cat',
- 'dog',
- 'horse',
- 'sheep',
- 'cow',
- 'elephant',
- 'bear',
- 'zebra',
- 'giraffe',
- 'backpack',
- 'umbrella',
- 'handbag',
- 'tie',
- 'suitcase',
- 'frisbee',
- 'skis',
- 'snowboard',
- 'sports ball',
- 'kite',
- 'baseball bat',
- 'baseball glove',
- 'skateboard',
- 'surfboard',
- 'tennis racket',
- 'bottle',
- 'wine glass',
- 'cup',
- 'fork',
- 'knife',
- 'spoon',
- 'bowl',
- 'banana',
- 'apple',
- 'sandwich',
- 'orange',
- 'broccoli',
- 'carrot',
- 'hot dog',
- 'pizza',
- 'donut',
- 'cake',
- 'chair',
- 'couch',
- 'potted plant',
- 'bed',
- 'dining table',
- 'toilet',
- 'tv',
- 'laptop',
- 'mouse',
- 'remote',
- 'keyboard',
- 'cell phone',
- 'microwave',
- 'oven',
- 'toaster',
- 'sink',
- 'refrigerator',
- 'book',
- 'clock',
- 'vase',
- 'scissors',
- 'teddy bear',
- 'hair drier',
- 'toothbrush'
 ]
