@@ -13,7 +13,7 @@ NUM_WORKERS = min(os.cpu_count(), 4)
 BATCH_SIZE = 8
 IMAGE_SIZE = 416
 NUM_CLASSES = 20
-LEARNING_RATE = 1e-5
+LEARNING_RATE = 1e-4
 WEIGHT_DECAY = 1e-4
 NUM_EPOCHS = 40
 CONF_THRESHOLD = 0.5
@@ -32,6 +32,10 @@ ANCHORS = [
     [(0.07, 0.15), (0.15, 0.11), (0.14, 0.29)],
     [(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)],
 ]  # Note these have been rescaled to be between [0, 1]
+
+scaled_anchors = (
+    torch.tensor(ANCHORS) * torch.tensor(S).unsqueeze(1).unsqueeze(1).repeat(1, 3, 2)
+    )
 
 mean = [0.485, 0.456, 0.406]
 std = [0.229, 0.224, 0.225]
