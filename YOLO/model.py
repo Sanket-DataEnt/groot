@@ -1,176 +1,125 @@
-"""
-Implementation of YOLOv3 architecture
-"""
-
+from torch import optim
+from pytorch_lightning import LightningModule
 import torch
+import torchvision
 import torch.nn as nn
-
-""" 
-Information about architecture config:
-Tuple is structured by (filters, kernel_size, stride) 
-Every conv is a same convolution. 
-List is structured by "B" indicating a residual block followed by the number of repeats
-"S" is for scale prediction block and computing the yolo loss
-"U" is for upsampling the feature map and concatenating with a previous layer
-"""
-config = [
-    (32, 3, 1),
-    (64, 3, 2),
-    ["B", 1],
-    (128, 3, 2),
-    ["B", 2],
-    (256, 3, 2),
-    ["B", 8],
-    (512, 3, 2),
-    ["B", 8],
-    (1024, 3, 2),
-    ["B", 4],  # To this point is Darknet-53
-    (512, 1, 1),
-    (1024, 3, 1),
-    "S",
-    (256, 1, 1),
-    "U",
-    (256, 1, 1),
-    (512, 3, 1),
-    "S",
-    (128, 1, 1),
-    "U",
-    (128, 1, 1),
-    (256, 3, 1),
-    "S",
-]
+import torch.nn.functional as F
+from utilities.utils import find_lr
+from yolov3 import YOLOv3
+import config
 
 
-class CNNBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, bn_act=True, **kwargs):
-        super().__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, bias=not bn_act, **kwargs)
-        self.bn = nn.BatchNorm2d(out_channels)
-        self.leaky = nn.LeakyReLU(0.1)
-        self.use_bn_act = bn_act
+class Model(LightningModule):
+  def __init__(self, max_epochs=24, learning_rate = 1e-7, num_classes=config.NUM_CLASSES):
+    super(Model, self).__init__()
+    self.criterion = nn.CrossEntropyLoss()
+    self.max_epochs = max_epochs
+    self.learning_rate = learning_rate
+    self.dataloader_args = dict(batch_size=128, pin_memory=True)
 
-    def forward(self, x):
-        if self.use_bn_act:
-            return self.leaky(self.bn(self.conv(x)))
-        else:
-            return self.conv(x)
+    # prep layer
+    self.prep_layer = custom_conv_layer(3, 64, False, 'batch')
+    # layer 1
+    self.layer1_x = custom_conv_layer(64, 128, True, 'batch')
+    self.layer1_r1 = nn.Sequential(
+      custom_conv_layer(128, 128, False, 'batch'),
+      custom_conv_layer(128, 128, False, 'batch')
+    )
+    # layer 2
+    self.layer2 = custom_conv_layer(128, 256, True, 'batch')
+    # Layer 3
+    self.layer3_x = custom_conv_layer(256, 512, True, 'batch')
+    self.layer3_r3 = nn.Sequential(
+      custom_conv_layer(512, 512, False, 'batch'),
+      custom_conv_layer(512, 512, False, 'batch')       
+    )
+    # MaxPooling with Kernel Size 4
+    self.pool = nn.MaxPool2d(4, 4)
+    # FC Layer 
+    self.fc = nn.Linear(512, 10)
 
+  def forward(self, x):
+    x = self.prep_layer(x)
+    x1 = self.layer1_x(x)
+    r1 = self.layer1_r1(x1)
+    x = x1 + r1
+    x = self.layer2(x)
+    x3 = self.layer3_x(x)
+    r3 = self.layer3_r3(x3)
+    x = x3 + r3
+    x = self.pool(x)
+    x = x.view(-1, 512)
+    x = self.fc(x)
+    return F.softmax(x, dim=-1)
 
-class ResidualBlock(nn.Module):
-    def __init__(self, channels, use_residual=True, num_repeats=1):
-        super().__init__()
-        self.layers = nn.ModuleList()
-        for repeat in range(num_repeats):
-            self.layers += [
-                nn.Sequential(
-                    CNNBlock(channels, channels // 2, kernel_size=1),
-                    CNNBlock(channels // 2, channels, kernel_size=3, padding=1),
-                )
-            ]
+  def commom_step(self, batch, batch_ids):
+    data, target = batch
+    # forward pass
+    outputs = self.forward(data)
+    loss = self.criterion(outputs, target)
 
-        self.use_residual = use_residual
-        self.num_repeats = num_repeats
+    # calculate training accuracy
+    _, predicted = torch.max(outputs.data, 1)
+    correct = (predicted == target).sum().item()
+    total = target.size(0)
+    acc = 100 * correct / total
+    return acc, loss
 
-    def forward(self, x):
-        for layer in self.layers:
-            if self.use_residual:
-                x = x + layer(x)
-            else:
-                x = layer(x)
+  def training_step(self, batch, batch_idx):
+    train_acc, loss = self.commom_step(batch, batch_idx)
 
-        return x
+    # logging training loss and accuracy during training step
+    self.log("train_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+    self.log('train_acc', train_acc, on_step=False, on_epoch=True, prog_bar=True, logger=True)
 
+    return loss
 
-class ScalePrediction(nn.Module):
-    def __init__(self, in_channels, num_classes):
-        super().__init__()
-        self.pred = nn.Sequential(
-            CNNBlock(in_channels, 2 * in_channels, kernel_size=3, padding=1),
-            CNNBlock(
-                2 * in_channels, (num_classes + 5) * 3, bn_act=False, kernel_size=1
-            ),
-        )
-        self.num_classes = num_classes
+  def validation_step(self, batch, batch_idx):
+    val_acc, loss = self.commom_step(batch, batch_idx)
 
-    def forward(self, x):
-        return (
-            self.pred(x)
-            .reshape(x.shape[0], 3, self.num_classes + 5, x.shape[2], x.shape[3])
-            .permute(0, 1, 3, 4, 2)
-        )
-
-
-class YOLOv3(nn.Module):
-    def __init__(self, in_channels=3, num_classes=80):
-        super().__init__()
-        self.num_classes = num_classes
-        self.in_channels = in_channels
-        self.layers = self._create_conv_layers()
-
-    def forward(self, x):
-        outputs = []  # for each scale
-        route_connections = []
-        for layer in self.layers:
-            if isinstance(layer, ScalePrediction):
-                outputs.append(layer(x))
-                continue
-
-            x = layer(x)
-
-            if isinstance(layer, ResidualBlock) and layer.num_repeats == 8:
-                route_connections.append(x)
-
-            elif isinstance(layer, nn.Upsample):
-                x = torch.cat([x, route_connections[-1]], dim=1)
-                route_connections.pop()
-
-        return outputs
-
-    def _create_conv_layers(self):
-        layers = nn.ModuleList()
-        in_channels = self.in_channels
-
-        for module in config:
-            if isinstance(module, tuple):
-                out_channels, kernel_size, stride = module
-                layers.append(
-                    CNNBlock(
-                        in_channels,
-                        out_channels,
-                        kernel_size=kernel_size,
-                        stride=stride,
-                        padding=1 if kernel_size == 3 else 0,
-                    )
-                )
-                in_channels = out_channels
-
-            elif isinstance(module, list):
-                num_repeats = module[1]
-                layers.append(ResidualBlock(in_channels, num_repeats=num_repeats,))
-
-            elif isinstance(module, str):
-                if module == "S":
-                    layers += [
-                        ResidualBlock(in_channels, use_residual=False, num_repeats=1),
-                        CNNBlock(in_channels, in_channels // 2, kernel_size=1),
-                        ScalePrediction(in_channels // 2, num_classes=self.num_classes),
-                    ]
-                    in_channels = in_channels // 2
-
-                elif module == "U":
-                    layers.append(nn.Upsample(scale_factor=2),)
-                    in_channels = in_channels * 3
-
-        return layers
+    # logging validation loss and accuracy during validation step
+    self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)#, sync_dist=True)
+    self.log('val_acc', val_acc, on_step=False, on_epoch=True, prog_bar=True, logger=True)#, sync_dist=True)
 
 
-if __name__ == "__main__":
-    num_classes = 20
-    IMAGE_SIZE = 416
-    model = YOLOv3(num_classes=num_classes)
-    x = torch.randn((2, 3, IMAGE_SIZE, IMAGE_SIZE))
-    out = model(x)
-    assert model(x)[0].shape == (2, 3, IMAGE_SIZE//32, IMAGE_SIZE//32, num_classes + 5)
-    assert model(x)[1].shape == (2, 3, IMAGE_SIZE//16, IMAGE_SIZE//16, num_classes + 5)
-    assert model(x)[2].shape == (2, 3, IMAGE_SIZE//8, IMAGE_SIZE//8, num_classes + 5)
-    print("Success!")
+  def configure_optimizers(self):
+      optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=1e-2)
+      best_lr = find_lr(self, self.train_dataloader(), optimizer, self.criterion)
+      scheduler = optim.lr_scheduler.OneCycleLR(
+          optimizer,
+          max_lr=best_lr,
+          steps_per_epoch=len(self.train_dataloader()),
+          epochs=self.max_epochs,
+          pct_start=5/self.max_epochs,
+          div_factor=100,
+          three_phase=False,
+          final_div_factor=100,
+          anneal_strategy='linear'
+      )
+      return {
+          'optimizer': optimizer,
+          'lr_scheduler': {
+              "scheduler": scheduler,
+              "interval": "step",
+          }
+      }
+
+  def prepare_data(self):
+      torchvision.datasets.CIFAR10(root='./data', train=True, download=True)
+      torchvision.datasets.CIFAR10(root='./data', train=False, download=True)
+
+  def setup(self, stage=None):
+      if stage == 'fit' or stage is None:
+          self.cifar10_train = torchvision.datasets.CIFAR10(root='./data', train=True, transform=TrainAlbumentation())
+          self.cifar10_val = torchvision.datasets.CIFAR10(root='./data', train=False, transform=TestAlbumentation())
+      if stage == 'test' or stage is None:
+          self.cifar10_test = torchvision.datasets.CIFAR10(root='./data', train=False, transform=TestAlbumentation())
+
+  def train_dataloader(self):
+      return torch.utils.data.DataLoader(self.cifar10_train, shuffle=True, **self.dataloader_args)
+
+  def val_dataloader(self):
+      return torch.utils.data.DataLoader(self.cifar10_val, shuffle=False, **self.dataloader_args)
+
+  def predict_dataloader(self):
+      return self.val_dataloader()
