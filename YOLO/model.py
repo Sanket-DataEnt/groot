@@ -1,5 +1,6 @@
 from torch import optim
 from pytorch_lightning import LightningModule
+from pytorch_lightning.utilities.memory import garbage_collection_cuda
 import torch
 import torchvision
 import torch.nn as nn
@@ -10,6 +11,8 @@ import config
 from loss import YoloLoss
 # from torch_lr_finder import LRFinder
 from dataset import YOLODataset
+from torch.utils.data import DataLoader
+
 
 def criterion(out, y):
     loss = (
@@ -29,10 +32,13 @@ def criterion(out, y):
 
 
 class Model(LightningModule):
-  def __init__(self):
+  def __init__(self, enable_gc='batch'):
     super(Model, self).__init__()
     self.network = YOLOv3(in_channels=3, num_classes=config.NUM_CLASSES)
     self.learning_rate = config.LEARNING_RATE
+    self.enable_gc = enable_gc
+    self.my_train_loss = MeanMetric()
+    self.my_val_loss = MeanMetric()
 
     self.max_epochs = config.NUM_EPOCHS * 2 // 5
     # self.learning_rate = learning_rate
@@ -93,30 +99,89 @@ class Model(LightningModule):
           }
       }
 
-#   def prepare_data(self):
-#       torchvision.datasets.CIFAR10(root='./data', train=True, download=True)
-#       torchvision.datasets.CIFAR10(root='./data', train=False, download=True)
-
-#   def setup(self, stage=None):
-#       if stage == 'fit' or stage is None:
-#           self.cifar10_train = torchvision.datasets.CIFAR10(root='./data', train=True, transform=TrainAlbumentation())
-#           self.cifar10_val = torchvision.datasets.CIFAR10(root='./data', train=False, transform=TestAlbumentation())
-#       if stage == 'test' or stage is None:
-#           self.cifar10_test = torchvision.datasets.CIFAR10(root='./data', train=False, transform=TestAlbumentation())
-
   def train_dataloader(self):
       train_dataset = YOLODataset(
-        config.DATASET + 'train.csv',
+        config.DATASET + '/train.csv',
         transform=config.train_transforms,
         S=[config.IMAGE_SIZE // 32, config.IMAGE_SIZE // 16, config.IMAGE_SIZE // 8],
         img_dir=config.IMG_DIR,
         label_dir=config.LABEL_DIR,
         anchors=config.ANCHORS,
     )
-      return torch.utils.data.DataLoader(self.cifar10_train, shuffle=True, **self.dataloader_args)
+      train_loader = DataLoader(
+        dataset=train_dataset,
+        batch_size=config.BATCH_SIZE,
+        num_workers=config.NUM_WORKERS,
+        pin_memory=config.PIN_MEMORY,
+        shuffle=True,
+        drop_last=False,
+    )
+      return train_loader
 
   def val_dataloader(self):
-      return torch.utils.data.DataLoader(self.cifar10_val, shuffle=False, **self.dataloader_args)
+        test_dataset = YOLODataset(
+        config.DATASET + '/test.csv',
+        transform=config.test_transforms,
+        S=[config.IMAGE_SIZE // 32, config.IMAGE_SIZE // 16, config.IMAGE_SIZE // 8],
+        img_dir=config.IMG_DIR,
+        label_dir=config.LABEL_DIR,
+        anchors=config.ANCHORS,
+    )
+        test_loader = DataLoader(
+        dataset=test_dataset,
+        batch_size=config.BATCH_SIZE,
+        num_workers=config.NUM_WORKERS,
+        pin_memory=config.PIN_MEMORY,
+        shuffle=False,
+        drop_last=False,
+    )
+        return test_loader
 
   def predict_dataloader(self):
       return self.val_dataloader()
+  
+  def on_train_batch_end(self, outputs, batch, batch_idx):
+     if self.enable_gc == 'batch':
+        garbage_collection_cuda()
+
+  def on_validation_batch_end(self, outputs, batch, batch_idx, dataloader_idx=0):
+    if self.enable_gc == 'batch':
+       garbage_collection_cuda()
+
+  def on_predict_batch_end(self, outputs, batch, batch_idx, dataloader_idx=0):
+    if self.enable_gc == 'batch':
+       garbage_collection_cuda()
+
+  def on_train_epoch_end(self):
+    if self.enable_gc == 'epoch':
+        garbage_collection_cuda()
+        print(f"Epoch: {self.current_epoch}, Global Steps: {self.global_step}, Train Loss: {self.my_train_loss.compute()}")
+        self.my_train_loss.reset()
+
+  def on_validation_epoch_end(self):
+    if self.enable_gc == 'epoch':
+        garbage_collection_cuda()
+        print(f"Epoch: {self.current_epoch}, Global Steps: {self.global_step}, Val Loss: {self.my_val_loss.compute()}")
+        self.my_val_loss.reset()
+
+  def on_predict_epoch_end(self):
+     if self.enable_gc == 'epoch':
+        garbage_collection_cuda()
+
+def main():
+    num_classes = 20
+    IMAGE_SIZE = 416
+    INPUT_SIZE = IMAGE_SIZE  # * 2
+    model = Model()
+    from torchinfo import summary
+    print(summary(model, input_size=(2, 3, INPUT_SIZE, INPUT_SIZE)))
+    inp = torch.randn((2, 3, INPUT_SIZE, INPUT_SIZE))
+    out = model(inp)
+    assert out[0].shape == (2, 3, IMAGE_SIZE//32, IMAGE_SIZE//32, num_classes + 5)
+    assert out[1].shape == (2, 3, IMAGE_SIZE//16, IMAGE_SIZE//16, num_classes + 5)
+    assert out[2].shape == (2, 3, IMAGE_SIZE//8, IMAGE_SIZE//8, num_classes + 5)
+    print("Success!")
+
+
+if __name__ == "__main__":
+    main()
