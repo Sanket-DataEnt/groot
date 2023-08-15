@@ -15,13 +15,31 @@ from torch.utils.data import DataLoader
 from torchmetrics import MeanMetric
 
 
+
+# Change
+loss_fn = YoloLoss()
+
 def criterion(out, y):
+    y0, y1, y2 = (
+            y[0],
+            y[1],
+            y[2],
+        )
     loss = (
-            YoloLoss(out[0], y[0], config.scaled_anchors[0])
-            + YoloLoss(out[1], y[1], config.scaled_anchors[1])
-            + YoloLoss(out[2], y[2], config.scaled_anchors[2])
+                loss_fn(out[0], y0, config.scaled_anchors[0])
+                + loss_fn(out[1], y1, config.scaled_anchors[1])
+                + loss_fn(out[2], y2, config.scaled_anchors[2])
             )
     return loss
+
+
+# def criterion(out, y):
+#     loss = (
+#             YoloLoss(out[0], y[0], config.scaled_anchors[0])
+#             + YoloLoss(out[1], y[1], config.scaled_anchors[1])
+#             + YoloLoss(out[2], y[2], config.scaled_anchors[2])
+#             )
+#     return loss
 
 # def find_lr(model, data_loader, optimizer, criterion):
 #     lr_finder = LRFinder(model, optimizer, criterion)
@@ -48,34 +66,28 @@ class Model(LightningModule):
   def forward(self, x):
     return self.network(x)
 
-  def common_step(self, batch, batch_ids):
+  def common_step(self, batch, metric):
     data, target = batch
-    # forward pass
     outputs = self.forward(data)
     loss = criterion(outputs, target)
-
-    # calculate training accuracy
-    _, predicted = torch.max(outputs.data, 1)
-    correct = (predicted == target).sum().item()
-    total = target.size(0)
-    acc = 100 * correct / total
-    return acc, loss
+    metric.update(loss, data.shape[0])
+    del data, target, outputs
+    return loss
 
   def training_step(self, batch, batch_idx):
-    train_acc, loss = self.common_step(batch, batch_idx)
+    loss = self.common_step(batch, self.my_train_loss)
 
     # logging training loss and accuracy during training step
     self.log("train_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
-    self.log('train_acc', train_acc, on_step=False, on_epoch=True, prog_bar=True, logger=True)
 
     return loss
 
   def validation_step(self, batch, batch_idx):
-    val_acc, loss = self.common_step(batch, batch_idx)
+    loss = self.common_step(batch, self.my_val_loss)
 
     # logging validation loss and accuracy during validation step
-    self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)#, sync_dist=True)
-    self.log('val_acc', val_acc, on_step=False, on_epoch=True, prog_bar=True, logger=True)#, sync_dist=True)
+    self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+    return loss
 
 
   def configure_optimizers(self):
