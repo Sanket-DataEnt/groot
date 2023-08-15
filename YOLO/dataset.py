@@ -28,8 +28,8 @@ class YOLODataset(Dataset):
         img_dir,
         label_dir,
         anchors,
-        image_size=416,
-        S=[13, 26, 52],
+        image_size=config.IMAGE_SIZE,
+        S=config.S,
         C=20,
         transform=None,
     ):
@@ -49,6 +49,15 @@ class YOLODataset(Dataset):
     def __len__(self):
         return len(self.annotations)
     
+    def load_images(self, index):
+        label_path = os.path.join(self.label_dir, self.annotations.iloc[index, 1])
+        bboxes = np.roll(np.loadtxt(fname=label_path, delimiter=" ", ndmin=2), 4, axis=1).tolist()
+        img_path = os.path.join(self.img_dir, self.annotations.iloc[index, 0])
+        img = np.array(Image.open(img_path).convert("RGB"))
+
+        return bboxes, img
+
+    
     def load_mosaic(self, index):
         # YOLOv5 4-mosaic loader. Loads 1 image + 3 random images into a 4-image mosaic
         labels4 = []
@@ -58,10 +67,11 @@ class YOLODataset(Dataset):
         random.shuffle(indices)
         for i, index in enumerate(indices):
             # Load image
-            label_path = os.path.join(self.label_dir, self.annotations.iloc[index, 1])
-            bboxes = np.roll(np.loadtxt(fname=label_path, delimiter=" ", ndmin=2), 4, axis=1).tolist()
-            img_path = os.path.join(self.img_dir, self.annotations.iloc[index, 0])
-            img = np.array(Image.open(img_path).convert("RGB"))
+            # label_path = os.path.join(self.label_dir, self.annotations.iloc[index, 1])
+            # bboxes = np.roll(np.loadtxt(fname=label_path, delimiter=" ", ndmin=2), 4, axis=1).tolist()
+            # img_path = os.path.join(self.img_dir, self.annotations.iloc[index, 0])
+            # img = np.array(Image.open(img_path).convert("RGB"))
+            bboxes, img = self.load_image(index)
             
 
             h, w = img.shape[0], img.shape[1]
