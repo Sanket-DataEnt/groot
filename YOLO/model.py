@@ -12,6 +12,7 @@ from loss import YoloLoss
 # from torch_lr_finder import LRFinder
 from dataset import YOLODataset
 from torch.utils.data import DataLoader
+from torchmetrics import MeanMetric
 
 
 def criterion(out, y):
