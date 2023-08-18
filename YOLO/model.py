@@ -106,7 +106,7 @@ class Model(LightningModule):
     return self.validation_step(batch, batch_idx)
 
 
-def configure_optimizers(self):
+  def configure_optimizers(self):
     optimizer = torch.optim.Adam(self.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
     EPOCHS = config.NUM_EPOCHS // 5
     scheduler = OneCycleLR(
@@ -128,7 +128,23 @@ def configure_optimizers(self):
 ####################
 # DATA RELATED HOOKS
 ####################
-def setup(self, stage=None):
+  def setup(self, stage=None):
+    self.train_dataset = YOLODataset(
+        config.DATASET + "/train.csv",
+        transform=self.train_transform,
+        S=[config.IMAGE_SIZE // 32, config.IMAGE_SIZE // 16, config.IMAGE_SIZE // 8],
+        img_dir=config.IMG_DIR,
+        label_dir=config.LABEL_DIR,
+        anchors=config.ANCHORS,
+        )
+    self.test_dataset = YOLODataset(
+        config.DATASET + "/test.csv",
+        transform=self.test_transform,
+        S=[config.IMAGE_SIZE // 32, config.IMAGE_SIZE // 16, config.IMAGE_SIZE // 8],
+        img_dir=config.IMG_DIR,
+        label_dir=config.LABEL_DIR,
+        anchors=config.ANCHORS,
+        )
     self.train_dataset = YOLODataset(
         config.DATASET + "/train.csv",
         transform=self.train_transform,
@@ -146,20 +162,17 @@ def setup(self, stage=None):
         anchors=config.ANCHORS,
         )
 
-def train_dataloader(self):
+  def train_dataloader(self):
+     return DataLoader(self.train_dataset, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS)
 
-    return DataLoader(self.train_dataset, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS)
+  def val_dataloader(self):
+     return DataLoader(self.test_dataset, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS)
 
-def val_dataloader(self):
+  def test_dataloader(self):
+     return DataLoader(self.test_dataset, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS)
 
-    return DataLoader(self.test_dataset, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS)
-
-def test_dataloader(self):
-
-    return DataLoader(self.test_dataset, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS)
-
-def get_optimizer(self):
-    return self.optimizers()
+  def get_optimizer(self):
+     return self.optimizers()
   
 
 def main():
