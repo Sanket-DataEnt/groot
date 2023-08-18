@@ -22,6 +22,7 @@ class Model(LightningModule):
     self.model = YOLOv3(in_channels=3, num_classes=config.NUM_CLASSES)
     self.learning_rate = config.LEARNING_RATE
     self.accuracy = Accuracy('MULTICLASS', num_classes=20)
+    self.loss = YoloLoss()
 
     self.max_epochs = config.NUM_EPOCHS * 2 // 5
 
