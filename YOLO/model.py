@@ -53,9 +53,9 @@ class Model(LightningModule):
     with torch.cuda.amp.autocast():
         out = self(x)
         loss = (
-            self.loss(out[0], y0, self.scaled_anchors[0])
-            + self.loss(out[1], y1, self.scaled_anchors[1])
-            + self.loss(out[2], y2, self.scaled_anchors[2])
+            self.loss(out[0], y0, config.scaled_anchors[0])
+            + self.loss(out[1], y1, config.scaled_anchors[1])
+            + self.loss(out[2], y2, config.scaled_anchors[2])
         )
 
     self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
@@ -63,7 +63,7 @@ class Model(LightningModule):
     return loss
   
   def on_validation_epoch_end(self):
-    plot_couple_examples(self.model, self.test_dataloader(), 0.6, 0.5, self.scaled_anchors)
+    plot_couple_examples(self.model, self.test_dataloader(), 0.6, 0.5, config.scaled_anchors)
     # Get the learning rate from the optimizer
     optimizer = self.optimizers()
     current_learning_rate = optimizer.param_groups[0]['lr']
