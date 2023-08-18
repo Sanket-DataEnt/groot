@@ -23,7 +23,7 @@ class Model(LightningModule):
     self.learning_rate = config.LEARNING_RATE
     self.accuracy = Accuracy('MULTICLASS', num_classes=20)
     self.loss = YoloLoss()
-    self.train_transform = config.train_transforms
+    self.train_transform = config.tarain_transforms
     self.test_transform = config.test_transforms
 
     self.max_epochs = config.NUM_EPOCHS * 2 // 5
