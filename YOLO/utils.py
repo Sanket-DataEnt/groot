@@ -8,7 +8,7 @@ import torch
 
 from collections import Counter
 from torch.utils.data import DataLoader
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 
 # device = config.DEVICE
 
