@@ -43,7 +43,6 @@ std = [0.229, 0.224, 0.225]
 scale = 1.1
 train_transforms = A.Compose(
     [
-        A.Normalize(mean=mean, std=std),
         A.LongestMaxSize(max_size=int(IMAGE_SIZE * scale)),
         A.PadIfNeeded(
             min_height=int(IMAGE_SIZE * scale),
@@ -75,7 +74,6 @@ train_transforms = A.Compose(
 )
 test_transforms = A.Compose(
     [
-        A.Normalize(mean=mean, std=std),
         A.LongestMaxSize(max_size=IMAGE_SIZE),
         A.PadIfNeeded(
             min_height=IMAGE_SIZE, min_width=IMAGE_SIZE, border_mode=cv2.BORDER_CONSTANT

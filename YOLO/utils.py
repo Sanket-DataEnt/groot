@@ -10,6 +10,7 @@ from collections import Counter
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+# device = config.DEVICE
 
 def iou_width_height(boxes1, boxes2):
     """
@@ -353,8 +354,10 @@ def cells_to_bboxes(predictions, anchors, S, is_preds=True):
     box_predictions = predictions[..., 1:5]
     if is_preds:
         anchors = anchors.reshape(1, len(anchors), 1, 1, 2)
+        anchors = anchors.to(config.DEVICE)
         box_predictions[..., 0:2] = torch.sigmoid(box_predictions[..., 0:2])
         box_predictions[..., 2:] = torch.exp(box_predictions[..., 2:]) * anchors
+        box_predictions = box_predictions.to(config.DEVICE)
         scores = torch.sigmoid(predictions[..., 0:1])
         best_class = torch.argmax(predictions[..., 5:], dim=-1).unsqueeze(-1)
     else:

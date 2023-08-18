@@ -6,8 +6,9 @@ instead of BinaryCrossEntropy.
 import random
 import torch
 import torch.nn as nn
-
+import config
 from utils import intersection_over_union
+# device = config.DEVICE
 
 
 class YoloLoss(nn.Module):
@@ -17,6 +18,7 @@ class YoloLoss(nn.Module):
         self.bce = nn.BCEWithLogitsLoss()
         self.entropy = nn.CrossEntropyLoss()
         self.sigmoid = nn.Sigmoid()
+        self.device = config.DEVICE
 
         # Constants signifying how much to pay for each respective part of the loss
         self.lambda_class = 1
@@ -42,7 +44,9 @@ class YoloLoss(nn.Module):
         # ==================== #
 
         anchors = anchors.reshape(1, 3, 1, 1, 2)
+        anchors = anchors.to(self.device)
         box_preds = torch.cat([self.sigmoid(predictions[..., 1:3]), torch.exp(predictions[..., 3:5]) * anchors], dim=-1)
+        box_preds = box_preds.to(self.device)
         ious = intersection_over_union(box_preds[obj], target[..., 1:5][obj]).detach()
         object_loss = self.mse(self.sigmoid(predictions[..., 0:1][obj]), ious * target[..., 0:1][obj])
 
