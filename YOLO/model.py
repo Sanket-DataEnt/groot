@@ -23,6 +23,8 @@ class Model(LightningModule):
     self.learning_rate = config.LEARNING_RATE
     self.accuracy = Accuracy('MULTICLASS', num_classes=20)
     self.loss = YoloLoss()
+    self.train_transform = config.train_transforms
+    self.test_transform = config.test_transforms
 
     self.max_epochs = config.NUM_EPOCHS * 2 // 5
 
@@ -104,71 +106,59 @@ class Model(LightningModule):
     return self.validation_step(batch, batch_idx)
 
 
-  def configure_optimizers(self):
-    optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=1e-2)
-    #   best_lr = find_lr(self, self.train_dataloader(), optimizer, criterion)
-    scheduler = optim.lr_scheduler.OneCycleLR(
+def configure_optimizers(self):
+    optimizer = torch.optim.Adam(self.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
+    EPOCHS = config.NUM_EPOCHS // 5
+    scheduler = OneCycleLR(
         optimizer,
         max_lr=1E-3,
         steps_per_epoch=len(self.train_dataloader()),
-        epochs=self.max_epochs,
-        pct_start=5/self.max_epochs,
+        total_steps = 41,
+        epochs=EPOCHS,
+        pct_start=0.2,
         div_factor=100,
         three_phase=False,
         final_div_factor=100,
         anneal_strategy='linear'
     )
-    return {
-        'optimizer': optimizer,
-        'lr_scheduler': {
-            "scheduler": scheduler,
-            "interval": "step",
-        }
-    }
+    #scheduler = StepLR(optimizer, step_size=10, gamma=0.1)  # Example StepLR configuration
 
-  def train_dataloader(self):
-    train_dataset = YOLODataset(
-    config.DATASET + '/train.csv',
-    transform=config.train_transforms,
-    S=[config.IMAGE_SIZE // 32, config.IMAGE_SIZE // 16, config.IMAGE_SIZE // 8],
-    img_dir=config.IMG_DIR,
-    label_dir=config.LABEL_DIR,
-    anchors=config.ANCHORS,
-    )
-    train_loader = DataLoader(
-    dataset=train_dataset,
-    batch_size=config.BATCH_SIZE,
-    num_workers=config.NUM_WORKERS,
-    pin_memory=config.PIN_MEMORY,
-    shuffle=True,
-    drop_last=False,
-    )
-    return train_loader
+    return [optimizer], [scheduler]
 
-  def val_dataloader(self):
-    test_dataset = YOLODataset(
-    config.DATASET + '/test.csv',
-    transform=config.test_transforms,
-    S=[config.IMAGE_SIZE // 32, config.IMAGE_SIZE // 16, config.IMAGE_SIZE // 8],
-    img_dir=config.IMG_DIR,
-    label_dir=config.LABEL_DIR,
-    anchors=config.ANCHORS,
-    )
-    test_loader = DataLoader(
-    dataset=test_dataset,
-    batch_size=config.BATCH_SIZE,
-    num_workers=config.NUM_WORKERS,
-    pin_memory=config.PIN_MEMORY,
-    shuffle=False,
-    drop_last=False,
-    )
-    return test_loader
+####################
+# DATA RELATED HOOKS
+####################
+def setup(self, stage=None):
+    self.train_dataset = YOLODataset(
+        config.DATASET + "/train.csv",
+        transform=self.train_transform,
+        S=[config.IMAGE_SIZE // 32, config.IMAGE_SIZE // 16, config.IMAGE_SIZE // 8],
+        img_dir=config.IMG_DIR,
+        label_dir=config.LABEL_DIR,
+        anchors=config.ANCHORS,
+        )
+    self.test_dataset = YOLODataset(
+        config.DATASET + "/test.csv",
+        transform=self.test_transform,
+        S=[config.IMAGE_SIZE // 32, config.IMAGE_SIZE // 16, config.IMAGE_SIZE // 8],
+        img_dir=config.IMG_DIR,
+        label_dir=config.LABEL_DIR,
+        anchors=config.ANCHORS,
+        )
 
-  def predict_dataloader(self):
-     return self.val_dataloader()
-  
+def train_dataloader(self):
 
-  def get_optimizer(self):
+    return DataLoader(self.train_dataset, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS)
+
+def val_dataloader(self):
+
+    return DataLoader(self.test_dataset, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS)
+
+def test_dataloader(self):
+
+    return DataLoader(self.test_dataset, batch_size=config.BATCH_SIZE, num_workers=config.NUM_WORKERS)
+
+def get_optimizer(self):
     return self.optimizers()
   
 
