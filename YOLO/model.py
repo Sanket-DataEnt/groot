@@ -14,6 +14,7 @@ from dataset import YOLODataset
 from torch.utils.data import DataLoader
 # from torchmetrics import MeanMetric
 from torchmetrics import Accuracy
+from torch.optim.lr_scheduler import OneCycleLR
 from utils import plot_couple_examples, check_class_accuracy, save_checkpoint, get_evaluation_bboxes, mean_average_precision
 
 class Model(LightningModule):
