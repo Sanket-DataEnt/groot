@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 
 # Huggingface datasets and tokenizers
-from dataset import load_dataset 
+from datasets import load_dataset 
 from tokenizers import Tokenizer 
 from tokenizers.models import WordLevel 
 from tokenizers.trainers import WordLevelTrainer 
