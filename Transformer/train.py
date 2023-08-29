@@ -5,7 +5,7 @@ from config import get_config, get_weights_file_path
 import torchtext.datasets as datasets 
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, Dataloader, random_split 
+from torch.utils.data import Dataset, DataLoader, random_split 
 from torch.optim.lr_scheduler import LambdaLR
 
 import warnings
@@ -169,8 +169,8 @@ def get_ds (config) :
     print(f'Max length of target sentence: {max_len_tgt}')
     
     
-    train_dataloader = Dataloader(train_ds, batch_size=config['batch_size'], shuffle=True)
-    val_dataloader = Dataloader(val_ds, batch_size=1, shuffle=True)
+    train_dataloader = DataLoader(train_ds, batch_size=config['batch_size'], shuffle=True)
+    val_dataloader = DataLoader(val_ds, batch_size=1, shuffle=True)
     
     return train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt
 
