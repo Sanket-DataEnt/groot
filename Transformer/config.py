@@ -8,7 +8,7 @@ def get_config():
         "seg_len": 350,
         "d_model": 512,
         "lang_src": "en",
-        "lang tgt": "it",
+        "lang_tgt": "it",
         "model_folder": "weights",
         "model_basename": "tmodel_",
         "preload": True,
