@@ -6,7 +6,7 @@ class BilingualDataset (Dataset):
 
     def __init__(self, ds, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang, seq_len):
         super().__init__()
-        self.seq_len - seq_len
+        self.seq_len = seq_len
 
         self.ds = ds
         self.tokenizer_sc - tokenizer_src 
