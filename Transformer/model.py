@@ -195,7 +195,7 @@ class ProjectionLayer(nn.Module):
         self.proj = nn.Linear(d_model, vocab_size)
 
     def forward(self, x) -> None:
-    # (batch, seqlen, d_model) --> (batch, seq_len, vocab_size)
+    # (batch, seq_len, d_model) --> (batch, seq_len, vocab_size)
         return torch.log_softmax(self.proj(x), dim = -1)
 
 class Transformer(nn.Module):
@@ -239,7 +239,7 @@ def build_transformer(src_vocab_size: int, tgt_vocab_size: int, src_seq_len: int
     encoder_blocks = [] 
     for _ in range(N):
         encoder_self_attention_block = MultiHeadAttentionBlock(d_model, h, dropout)
-        feed_forward_block - FeedForwardBlock(d_model, d_ff, dropout)
+        feed_forward_block = FeedForwardBlock(d_model, d_ff, dropout)
         encoder_block = EncoderBlock(encoder_self_attention_block, feed_forward_block, dropout) 
         encoder_blocks.append(encoder_block)
         
