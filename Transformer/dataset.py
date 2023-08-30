@@ -9,8 +9,8 @@ class BilingualDataset (Dataset):
         self.seq_len = seq_len
 
         self.ds = ds
-        self.tokenizer_sc - tokenizer_src 
-        self.tokenizer_tgt - tokenizer_tgt 
+        self.tokenizer_src = tokenizer_src 
+        self.tokenizer_tgt = tokenizer_tgt 
         self.src_lang = src_lang 
         self.tgt_lang = tgt_lang
 
