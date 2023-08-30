@@ -209,7 +209,7 @@ def train_model(config):
         global_step = state['global_step']
         print("preloaded")
 
-    loss_fn = nn.CrossEntropy(ignore_index=tokenizer_src.token_to_id('[PAD]'), label_smoothing=0.1).to(device)
+    loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer_src.token_to_id('[PAD]'), label_smoothing=0.1).to(device)
 
     for epoch in range(initial_epoch, config['num_epochs']) :
         torch.cuda.empty_cache()
