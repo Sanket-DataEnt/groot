@@ -27,7 +27,7 @@ from tensorboardX import SummaryWriter
 
 
 
-def greedy_decode (model, source, source_mask, tokenizer_sc, tokenizer_tgt, max_len, device):
+def greedy_decode (model, source, source_mask, tokenizer_src, tokenizer_tgt, max_len, device):
     sos_idx = tokenizer_tgt.token_to_id(['SOS'])
     eos_idx = tokenizer_tgt.token_to_id(['EOS'])
 
@@ -78,7 +78,7 @@ def run_validation (model, validation_ds, tokenizer_src, tokenizer_tgt, max_len,
     with torch.no_grad():
         for batch in validation_ds:
             count += 1
-            encoder_input = batch["encoder_Input"].to(device) # (b, seq_len) 
+            encoder_input = batch["encoder_input"].to(device) # (b, seq_len) 
             encoder_mask = batch["encoder_mask"].to(device) # (b, 1, 1, seq_ len)
 
             # check that the batch size is 1
@@ -143,7 +143,7 @@ def get_or_build_tokenizer (config, ds, lang):
     return tokenizer
 
 def get_ds (config) :
-    # It only has the train split, so we divide it overselves 
+    # It only has the train split, so we divide it ourselves 
     ds_raw = load_dataset('opus_books', f"{config['lang_src']}-{config['lang_tgt']}", split='train')
 
     # Build tokenizers
@@ -163,7 +163,7 @@ def get_ds (config) :
     max_len_tgt = 0
 
     for item in ds_raw:
-        src_ids = tokenizer_src.encode(item['translation'][config['lane_src']]).ids
+        src_ids = tokenizer_src.encode(item['translation'][config['lang_src']]).ids
         tgt_ids = tokenizer_tgt.encode(item['translation'][config['lang_tgt']]).ids
         max_len_src = max(max_len_src, len(src_ids))
         max_len_tgt = max(max_len_tgt, len(tgt_ids))
@@ -194,9 +194,9 @@ def train_model(config):
     # Tensorboard
     writer = SummaryWriter(config['experiment_name'])
     
-    optimizer = torch.optim.Adam(model.parameters(), lr=config['1r'], eps=1e-9)
+    optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'], eps=1e-9)
 
-    # If the user specifled a model to preload before training, load it
+    # If the user specified a model to preload before training, load it
     initial_epoch = 0
     global_step = 0
     if config['preload']:
@@ -211,7 +211,7 @@ def train_model(config):
 
     loss_fn = nn.CrossEntropy(ignore_index=tokenizer_src.token_to_id('[PAD]'), label_smoothing=0.1).to(device)
 
-    for epoch in range(initial_epoch, config[ 'num_epochs']) :
+    for epoch in range(initial_epoch, config['num_epochs']) :
         torch.cuda.empty_cache()
         model.train()
         batch_iterator = tqdm(train_dataloader, desc=f"Processing Epoch (epoch: 02d)")
