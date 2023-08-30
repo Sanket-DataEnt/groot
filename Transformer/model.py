@@ -113,7 +113,7 @@ class MultiHeadAttentionBlock(nn.Module):
             attention_scores = dropout(attention_scores)
         # (batch, h, seq_len, seq_len) --> (batch, h, seq_len, d_k)
         # return attention scores which can be used for visualization
-        return (attention_scores & value), attention_scores
+        return (attention_scores @ value), attention_scores
 
     def forward(self, q, k, v, mask):
         query = self.w_q(q) # (batch, seq_len, «_model) --> (batch, seq_len, d_model) 
