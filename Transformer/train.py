@@ -28,8 +28,8 @@ from tensorboardX import SummaryWriter
 
 
 def greedy_decode (model, source, source_mask, tokenizer_src, tokenizer_tgt, max_len, device):
-    sos_idx = tokenizer_tgt.token_to_id(['SOS'])
-    eos_idx = tokenizer_tgt.token_to_id(['EOS'])
+    sos_idx = tokenizer_tgt.token_to_id('[SOS]')
+    eos_idx = tokenizer_tgt.token_to_id('[EOS]')
 
     # Precompute the encoder output and reuse it for every step
     encoder_output = model.encode (source, source_mask)
